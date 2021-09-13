@@ -2,43 +2,20 @@ from PIL import Image
 from PIL import GifImagePlugin
 import ctypes
 import time
-import json
+import Config
 import os,shutil
-
-class Config:
-    standartStuff = {
-    "filename":"animeGif228",
-    "pathToSaveFolder":"C:\\Users\\student\\Desktop\\zmeya\\temp",
-}
-    def __init__(self,file):
-        self.file = file
-        
-        self.check()
-        
-        self.data = self.getData()
-    
-    def check(self):
-        if os.stat(self.file).st_size == 0:
-            self.toStandart()
-    
-    def putData(self,data):
-        with open(self.file,"w",encoding="utf-8") as f:
-            f.write(json.dumps(data,ensure_ascii=False,indent=4))
-    def getData(self):
-        with open(self.file,"r",encoding="utf-8") as f:
-            return json.load(f)
-    def toStandart(self):
-        self.putData(Config.standartStuff)
+import threading
 
 class Desktop:
 
-    def __init__(self,pathToGifImage):
+    def __init__(self):
 
-        self.config = Config("config.json")
+        self.config = Config.Config("config.json")
     
-        self.path = pathToGifImage + self.config.data["filename"] + ".gif"
+        self.path = self.config.data["fullFilePath"]
         
         if not os.path.exists(self.path):
+            print("file not founded")
             raise FileNotFoundError
             
         self.image = Image.open(self.path)
@@ -68,21 +45,14 @@ class Desktop:
             self.image.seek(frame)
             #print(self.image.info['duration'])
             self.timeList.append(self.image.info['duration'])
-            self.image.save("temp/temp{}.png".format(frame))
-        
+            self.image.save("{}\\temp{}.png".format(self.config.data["pathToSaveFolder"],frame))
+    
     def idle(self):
         currentIndex = 0
-        while True:
+        t = threading.currentThread()
+        while getattr(t, "do_run", True):
             ctypes.windll.user32.SystemParametersInfoW(20, 0, "{}\\temp{}.png".format(self.pathToSave,currentIndex) , 0)
             currentIndex += 1
             if currentIndex == self.size:
                 currentIndex = 0
             time.sleep(self.timeList[currentIndex]/1000)
-			
-		
-try:
-    aa = Desktop("C:\\Users\\student\\Desktop\\")
-    aa.idle()
-except Exception as e:
-    print(e)
-    input()
