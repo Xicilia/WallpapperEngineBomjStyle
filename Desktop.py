@@ -6,26 +6,24 @@ import Config
 import os,shutil
 import threading
 
-class Desktop:
-
-    def __init__(self):
-
-        self.config = Config.Config("config.json")
+class FrameList:
     
-        self.path = self.config.data["fullFilePath"]
+    def __init__(self,scale,label = None):
+        self.config = Config.Config("config.json")
         
+        self.path = self.config.data["fullFilePath"]
+        self.label = label
+        self.scale = scale
         if not os.path.exists(self.path):
             print("file not founded")
-            raise FileNotFoundError
-            
+        
         self.image = Image.open(self.path)
+        self.duration = self.image.info['duration']
         self.pathToSave = self.config.data["pathToSaveFolder"]
-        self.timeList = []
-		
         self.size = self.image.n_frames
-		
-        self._initialization()
-
+        self.cachedFile = None
+        
+        self._initFrames()
     def _clearBeforeInit(self):
         folder = self.pathToSave
         
@@ -38,21 +36,46 @@ class Desktop:
                     shutil.rmtree(file_path)
             except:
                 pass
-
-    def _initialization(self):
+    def _initFrames(self):
         self._clearBeforeInit()
+        
+        self.pathToCached = os.path.expanduser("~") + "\\AppData\\Roaming\\Microsoft\\Windows\\Themes\\CachedFiles"
+        self.cachedFiles = [f for f in os.listdir(self.pathToCached) if os.path.isfile(os.path.join(self.pathToCached, f))]
+        shutil.copy(os.path.join(self.pathToCached, self.cachedFiles[0]),self.config.data["pathToSaveFolder"])
+        
+        self.cachedFile = os.path.join(self.config.data["pathToSaveFolder"],self.cachedFiles[0])
         for frame in range(0,self.size):
             self.image.seek(frame)
-            #print(self.image.info['duration'])
-            self.timeList.append(self.image.info['duration'])
-            self.image.save("{}\\temp{}.png".format(self.config.data["pathToSaveFolder"],frame))
-    
+            if self.scale:
+                scaledImage = self.image.resize((1920,1080),Image.ANTIALIAS)
+            else:
+                scaledImage = self.image
+            scaledImage.save("{}\\temp{}.png".format(self.config.data["pathToSaveFolder"],frame),quality=90)
+            if self.label: self.label['text'] = '{} кадр из {} были идентефицированы'.format(frame,self.size)
+     
+
+class Desktop:
+
+    def __init__(self,frameList = None):
+        
+        if not frameList:
+            self.frameList = None
+        else:
+            self.frameList = frameList
+        
+        self.config = Config.Config("config.json")
+        self.pathToSave = self.config.data["pathToSaveFolder"]
+
+    def setList(self,frame_list):
+        self.frameList = frame_list
     def idle(self):
         currentIndex = 0
         t = threading.currentThread()
         while getattr(t, "do_run", True):
             ctypes.windll.user32.SystemParametersInfoW(20, 0, "{}\\temp{}.png".format(self.pathToSave,currentIndex) , 0)
             currentIndex += 1
-            if currentIndex == self.size:
+            if currentIndex == self.frameList.size:
                 currentIndex = 0
-            time.sleep(self.timeList[currentIndex]/1000)
+            time.sleep(self.frameList.duration/1000)
+        else:
+            ctypes.windll.user32.SystemParametersInfoW(20, 0, self.frameList.cachedFile , 0)

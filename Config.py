@@ -2,10 +2,9 @@ import json
 import os
 class Config:
     standartStuff = {
-    "filename":"animeGif228",
-    "pathToSaveFolder":"C:\\Users\\Алая Дьяволица\\Desktop\\temp",
-    "pathToFile":"C:\\Users\\Алая Дьяволица\\Desktop\\",
-    "FullFilePath":"TEST",
+    "pathToSaveFolder": "{}\\temp".format(os.path.expanduser("~")),
+    "fullFilePath":"Ещё не существует))",
+    "scale":1,
 }
     def __init__(self,file):
         self.file = file
@@ -15,7 +14,7 @@ class Config:
         self.data = self.getData()
     
     def check(self):
-        if os.stat(self.file).st_size == 0:
+        if not os.path.exists(self.file):
             self.toStandart()
     
     def putData(self,data):
@@ -26,3 +25,6 @@ class Config:
             return json.load(f)
     def toStandart(self):
         self.putData(Config.standartStuff)
+        self.data = self.getData()
+        if not os.path.exists(self.data["pathToSaveFolder"]):
+            os.makedirs(self.data["pathToSaveFolder"])
